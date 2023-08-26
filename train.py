@@ -84,7 +84,10 @@ vectorizer = GloveVectorizer()
 Xdata = vectorizer.fit_transform(data.text)
 
 # define the number of the clusters
-k = 3
+k = int(input("input k value: "))
+sample_size = int(input("input sample size: "))
+ratio = float(sample_size/2000)
+print("ratio is : ", ratio)
 
 # Create a k-means model and fit it to the data
 km = KMeans(n_clusters=k)
@@ -97,23 +100,15 @@ y_pred = km.predict(Xdata)
 print(y_pred)
 
 def CompareAccuracy(api):
-  randlist1 = random.sample(range(0, elem[0]), round(elem[0]*0.1))
-  randlist2 = random.sample(range(0, elem[1]), round(elem[1]*0.1))
-  randlist3 = random.sample(range(0, elem[2]), round(elem[2]*0.1))
   sample = []
   arr = []
-  for num in randlist1:
-    key = elem_0[num]
-    sample.append(api[key])
-    arr.append(manual[key])
-  for num in randlist2:
-    key = elem_1[num]
-    sample.append(api[key])
-    arr.append(manual[key])
-  for num in randlist3:
-    key = elem_2[num]
-    sample.append(api[key])
-    arr.append(manual[key])
+  # generate random numbers represent index to the data
+  for i in range(20):
+    randlist_n = random.sample(range(0, elem[i]), round(elem[i]*ratio))
+    for num in randlist_n:
+      key = elem_n[i][num]
+      sample.append(api[key])
+      arr.append(manual[key])
   accurate = accuracy(sample, arr)
   return accurate
 
@@ -128,12 +123,14 @@ def accuracy(sample, arr):
 # calculate the number of elements in each cluster
 elem = Counter(y_pred)
 print("\nk-clusters count:\t", elem)
-elem_0 = np.where(y_pred == 0)[0]
-elem_1 = np.where(y_pred == 1)[0]
-elem_2 = np.where(y_pred == 2)[0]
+elem_n = []
+for i in range(20):
+  elem_n.append(np.where(y_pred == i)[0])
+
 def ClusterAccuracy():
-  print("\nk-Clustering Accuracy:\nAPI 1\tAPI 2\tAPI 3")
-  print("{0:.2%}".format(CompareAccuracy(api_1)), "\t", "{0:.2%}".format(CompareAccuracy(api_2)), " ", "{0:.2%}".format(CompareAccuracy(api_3)))
+  # print("\nk-Clustering Accuracy:\nAPI 1\tAPI 2\tAPI 3")
+  # print("{0:.2%}".format(CompareAccuracy(api_1)), "\t", "{0:.2%}".format(CompareAccuracy(api_2)), " ", "{0:.2%}".format(CompareAccuracy(api_3)))
+  return [CompareAccuracy(api_1), CompareAccuracy(api_2), CompareAccuracy(api_3)]
 
 
 # calculate total accuracy of 3 APIs
@@ -141,12 +138,14 @@ def PopulationAccuracy():
   accuracy1 = accuracy(api_1, manual)
   accuracy2 = accuracy(api_2, manual)
   accuracy3 = accuracy(api_3, manual)
-  print("\nTotal Population Accuracy: \nAPI 1\tAPI 2\tAPI 3")
-  print("{0:.2%}".format(accuracy1), "\t", "{0:.2%}".format(accuracy2), " ", "{0:.2%}".format(accuracy3))
+  # print("\nTotal Population Accuracy: \nAPI 1\tAPI 2\tAPI 3")
+  # print("{0:.2%}".format(accuracy1), "\t", "{0:.2%}".format(accuracy2), " ", "{0:.2%}".format(accuracy3))
+  return [accuracy1, accuracy2, accuracy3]
+
 
 # random generate 200 samples and calculate the accuracy
 def RandomSampleAccuracy():
-  randomIndex = random.sample(range(0,2000), 200)
+  randomIndex = random.sample(range(0,2000), sample_size)
   randomIndex.sort()
   sample = []
   sample_api_1 = []
@@ -160,9 +159,50 @@ def RandomSampleAccuracy():
   accuracy1 = accuracy(sample_api_1, sample)
   accuracy2 = accuracy(sample_api_2, sample)
   accuracy3 = accuracy(sample_api_3, sample)
-  print("\nRandom Pick Sample Accuracy: \nAPI 1\tAPI 2\tAPI 3")
-  print("{0:.2%}".format(accuracy1), "\t", "{0:.2%}".format(accuracy2), " ", "{0:.2%}".format(accuracy3))
+  # print("\nRandom Pick Sample Accuracy: \nAPI 1\tAPI 2\tAPI 3")
+  # print("{0:.2%}".format(accuracy1), "\t", "{0:.2%}".format(accuracy2), " ", "{0:.2%}".format(accuracy3))
+  return [accuracy1, accuracy2, accuracy3]
 
 RandomSampleAccuracy()
-PopulationAccuracy()
+
 ClusterAccuracy()
+
+Xbar = np.array(PopulationAccuracy())
+randomPick = []
+clusterPick = []
+# Standard Deviation List
+randomPickStd = []
+clusterPickStd = []
+# run 1000 times then compare the difference
+for i in range(0, 10000):
+  r = RandomSampleAccuracy()
+  c = ClusterAccuracy()
+  rList = []
+  cList = []
+  rSqList = []
+  cSqList = []
+  for x, y in zip(r, Xbar):
+    rList.append(abs(x-y))
+    rSqList.append(pow(x-y, 2)/1000)
+  randomPick.append(rList)
+  randomPickStd.append(rSqList)
+  for x, y in zip(c, Xbar):
+    cList.append(abs(x-y))
+    cSqList.append(pow(x-y, 2)/1000)
+  clusterPick.append(cList)
+  clusterPickStd.append(cSqList)
+
+randomPick = np.array(randomPick)
+clusterPick = np.array(clusterPick)
+Xrandom = randomPick.mean(axis=0)
+Xcluster = clusterPick.mean(axis=0)
+print("\nRandom Pick Deviation: ", Xrandom)
+print("k-Clustering Pick Deviation: ", Xcluster)
+
+############ standard deviation###################
+randomPickStd = np.array(randomPickStd)
+clusterPickStd = np.array(clusterPickStd)
+Drandom = np.sqrt(randomPickStd.sum(axis=0))
+Dcluster = np.sqrt(clusterPickStd.sum(axis=0))
+print("\nRandom Pick Standard Deviation: ", Drandom)
+print("k-Clustering Pick Standard Deviation: ", Dcluster)
